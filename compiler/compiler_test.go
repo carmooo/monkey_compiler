@@ -24,8 +24,19 @@ func TestIntegerArithmetic(t *testing.T) {
 				code.Make(code.OpConstant, 0),
 				code.Make(code.OpConstant, 1),
 				code.Make(code.OpAdd),
+				code.Make(code.OpPop),
 			},
 			expectedConstants: []interface{}{1, 2},
+		},
+		{
+			input:             "1; 2",
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpPop),
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpPop),
+			},
 		},
 	}
 
@@ -42,19 +53,19 @@ func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 
 		err := compiler.Compile(program)
 		if err != nil {
-			t.Fatalf("compiler error: %s", err)
+			t.Errorf("compiler error: %s", err)
 		}
 
 		byteCode := compiler.ByteCode()
 
 		err = testInstructions(tt.expectedInstructions, byteCode.Instructions)
 		if err != nil {
-			t.Fatalf("test instructions failed: %s", err)
+			t.Errorf("test instructions failed: %s", err)
 		}
 
 		err = testConstants(tt.expectedConstants, byteCode.Constants)
 		if err != nil {
-			t.Fatalf("test constants failed: %s", err)
+			t.Errorf("test constants failed: %s", err)
 		}
 	}
 }
