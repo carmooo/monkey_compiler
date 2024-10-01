@@ -61,7 +61,17 @@ func (vm *VM) Run() error {
 				return err
 			}
 		case code.OpEqual, code.OpNotEqual, code.OpGreaterThan:
-			err := vm.executeComparissonOperation(op)
+			err := vm.executeComparisonOperation(op)
+			if err != nil {
+				return err
+			}
+		case code.OpMinus:
+			err := vm.executeMinusOperation()
+			if err != nil {
+				return err
+			}
+		case code.OpBang:
+			err := vm.executeBangOperation()
 			if err != nil {
 				return err
 			}
@@ -135,7 +145,7 @@ func (vm *VM) executeBinaryIntegerOperation(op code.Opcode, left, right object.O
 	return vm.push(&object.Integer{Value: result})
 }
 
-func (vm *VM) executeComparissonOperation(op code.Opcode) error {
+func (vm *VM) executeComparisonOperation(op code.Opcode) error {
 	right := vm.pop()
 	left := vm.pop()
 
@@ -170,6 +180,23 @@ func (vm *VM) executeIntegerComparison(op code.Opcode, left, right object.Object
 	default:
 		return fmt.Errorf("unknown operator: %d", op)
 	}
+}
+
+func (vm *VM) executeMinusOperation() error {
+	right := vm.pop()
+	if right.Type() != object.INTEGER_OBJECT {
+		return fmt.Errorf("unsopported type for negation: %s", right.Type())
+	}
+	rightValue := right.(*object.Integer).Value
+	return vm.push(&object.Integer{Value: -rightValue})
+}
+
+func (vm *VM) executeBangOperation() error {
+	right := vm.pop()
+	if right == False {
+		return vm.push(True)
+	}
+	return vm.push(False)
 }
 
 func nativeBoolToBoolean(b bool) object.Object {
