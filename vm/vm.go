@@ -43,37 +43,57 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+
 		case code.OpAdd, code.OpSub, code.OpMul, code.OpDiv:
 			err := vm.executeBinaryOperation(op)
 			if err != nil {
 				return err
 			}
+
 		case code.OpPop:
 			vm.pop()
+
 		case code.OpTrue:
 			err := vm.push(True)
 			if err != nil {
 				return err
 			}
+
 		case code.OpFalse:
 			err := vm.push(False)
 			if err != nil {
 				return err
 			}
+
 		case code.OpEqual, code.OpNotEqual, code.OpGreaterThan:
 			err := vm.executeComparisonOperation(op)
 			if err != nil {
 				return err
 			}
+
 		case code.OpMinus:
 			err := vm.executeMinusOperation()
 			if err != nil {
 				return err
 			}
+
 		case code.OpBang:
 			err := vm.executeBangOperation()
 			if err != nil {
 				return err
+			}
+
+		case code.OpJump:
+			pos := int(code.ReadUint16(vm.instructions[ip+1:]))
+			ip = pos - 1
+
+		case code.OpJumpNotTruthy:
+			pos := int(code.ReadUint16(vm.instructions[ip+1:]))
+			ip += 2
+
+			condition := vm.pop()
+			if !isTruthy(condition) {
+				ip = pos - 1
 			}
 		}
 	}
@@ -204,4 +224,13 @@ func nativeBoolToBoolean(b bool) object.Object {
 		return True
 	}
 	return False
+}
+
+func isTruthy(o object.Object) bool {
+	switch o := o.(type) {
+	case *object.Boolean:
+		return o.Value
+	default:
+		return true
+	}
 }
