@@ -6,6 +6,7 @@ import (
 	"github.com/carmooo/monkey_compiler/compiler"
 	"github.com/carmooo/monkey_compiler/vm"
 	"github.com/carmooo/monkey_interpreter/lexer"
+	"github.com/carmooo/monkey_interpreter/object"
 	"github.com/carmooo/monkey_interpreter/parser"
 	"io"
 )
@@ -14,6 +15,10 @@ const PROMPT = ">> "
 
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
+
+	var constants []object.Object
+	globals := make([]object.Object, vm.GlobalsSize)
+	symbolTable := compiler.NewSymbolTable()
 
 	for {
 		fmt.Printf(PROMPT)
@@ -32,14 +37,14 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		comp := compiler.New()
+		comp := compiler.NewWithState(constants, symbolTable)
 		err := comp.Compile(program)
 		if err != nil {
 			fmt.Fprintf(out, "Woops! Compilation failed:\n %s\n", err)
 			continue
 		}
 
-		machine := vm.New(comp.ByteCode())
+		machine := vm.NewWithGlobalsStore(comp.ByteCode(), globals)
 		err = machine.Run()
 		if err != nil {
 			fmt.Fprintf(out, "Woops! Executing bytecode failed:\n %s\n", err)
