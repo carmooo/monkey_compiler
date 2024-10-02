@@ -12,6 +12,8 @@ const StackSize = 2048
 var True = &object.Boolean{Value: true}
 var False = &object.Boolean{Value: false}
 
+var Null = &object.Null{}
+
 type VM struct {
 	constants    []object.Object
 	instructions code.Instructions
@@ -94,6 +96,11 @@ func (vm *VM) Run() error {
 			condition := vm.pop()
 			if !isTruthy(condition) {
 				ip = pos - 1
+			}
+		case code.OpNull:
+			err := vm.push(&object.Null{})
+			if err != nil {
+				return err
 			}
 		}
 	}
@@ -213,10 +220,12 @@ func (vm *VM) executeMinusOperation() error {
 
 func (vm *VM) executeBangOperation() error {
 	right := vm.pop()
-	if right == False {
+	switch right {
+	case False, Null:
 		return vm.push(True)
+	default:
+		return vm.push(False)
 	}
-	return vm.push(False)
 }
 
 func nativeBoolToBoolean(b bool) object.Object {
@@ -230,6 +239,8 @@ func isTruthy(o object.Object) bool {
 	switch o := o.(type) {
 	case *object.Boolean:
 		return o.Value
+	case *object.Null:
+		return false
 	default:
 		return true
 	}

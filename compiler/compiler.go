@@ -130,17 +130,15 @@ func (c *Compiler) Compile(node ast.Node) error {
 			c.removeLastPop()
 		}
 
+		jumpPos := c.emit(code.OpJump, 9999)
+
+		// back-patching jumpNotTruthy
+		afterConsequencePosition := len(c.instructions)
+		c.changeOperand(jumpNotTruthyPos, afterConsequencePosition)
+
 		if node.Alternative == nil {
-			// back-patching jumpNotTruthy
-			afterConsequencePosition := len(c.instructions)
-			c.changeOperand(jumpNotTruthyPos, afterConsequencePosition)
+			c.emit(code.OpNull)
 		} else {
-			jumpPos := c.emit(code.OpJump, 9999) // FIXME add operand
-
-			// back-patching jumpNotTruthy
-			afterConsequencePosition := len(c.instructions)
-			c.changeOperand(jumpNotTruthyPos, afterConsequencePosition)
-
 			err = c.Compile(node.Alternative)
 			if err != nil {
 				return err
@@ -149,11 +147,11 @@ func (c *Compiler) Compile(node ast.Node) error {
 			if c.lastInstructionIsPop() {
 				c.removeLastPop()
 			}
-
-			// back-patching Jump
-			afterAlternativePosition := len(c.instructions)
-			c.changeOperand(jumpPos, afterAlternativePosition)
 		}
+
+		// back-patching Jump
+		afterAlternativePosition := len(c.instructions)
+		c.changeOperand(jumpPos, afterAlternativePosition)
 	case *ast.BlockStatement:
 		for _, s := range node.Statements {
 			err := c.Compile(s)
