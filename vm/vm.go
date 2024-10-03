@@ -157,6 +157,15 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+
+		case code.OpIndex:
+			indexObject := vm.pop()
+			leftObject := vm.pop()
+
+			err := vm.executeIndexExpression(leftObject, indexObject)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -335,6 +344,43 @@ func (vm *VM) buildHash(startIndex, endIndex int) (object.Object, error) {
 	}
 
 	return &object.Hash{Pairs: pairs}, nil
+}
+
+func (vm *VM) executeIndexExpression(left, index object.Object) error {
+	switch {
+	case left.Type() == object.ARRAY_OBJECT && index.Type() == object.INTEGER_OBJECT:
+		return vm.executeArrayIndex(left, index)
+	case left.Type() == object.HASH_OBJECT:
+		return vm.executeHashIndex(left, index)
+	default:
+		return fmt.Errorf("index operator not supported: %s", left.Type())
+	}
+}
+
+func (vm *VM) executeArrayIndex(array, index object.Object) error {
+	arrayObject := array.(*object.Array)
+	i := index.(*object.Integer).Value
+	max := int64(len(arrayObject.Elements) - 1)
+
+	if 0 <= i && i <= max {
+		return vm.push(arrayObject.Elements[i])
+	}
+	return vm.push(Null)
+}
+
+func (vm *VM) executeHashIndex(hash, index object.Object) error {
+	hashObject := hash.(*object.Hash)
+
+	key, ok := index.(object.Hashable)
+	if !ok {
+		return fmt.Errorf("unusable as hash key: %s", index.Type())
+	}
+
+	pair, ok := hashObject.Pairs[key.HashKey()]
+	if !ok {
+		return vm.push(Null)
+	}
+	return vm.push(pair.Value)
 }
 
 func nativeBoolToBoolean(b bool) object.Object {
