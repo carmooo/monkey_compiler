@@ -203,12 +203,20 @@ func (vm *VM) Run() error {
 			}
 
 		case code.OpCall:
-			vm.currentFrame().ip++ // REMOVE ME
-			fn, ok := vm.stack[vm.sp-1].(*compilerObject.CompiledFunction)
+			numArgs := code.ReadUint8(instructions[ip+1:])
+			vm.currentFrame().ip++
+
+			fn, ok := vm.stack[vm.sp-1-int(numArgs)].(*compilerObject.CompiledFunction)
 			if !ok {
 				return fmt.Errorf("calling non-function")
 			}
-			frame := NewFrame(fn, vm.sp)
+
+			if int(numArgs) != fn.NumParameters {
+				return fmt.Errorf("wrong number of arguments: want=%d, got=%d",
+					fn.NumParameters, numArgs)
+			}
+
+			frame := NewFrame(fn, vm.sp-int(numArgs))
 			vm.pushFrame(frame)
 			// vm.sp += fn.numLocals
 			vm.sp = frame.basePointer + fn.NumLocals

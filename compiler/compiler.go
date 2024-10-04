@@ -290,8 +290,9 @@ func (c *Compiler) Compile(node ast.Node) error {
 		fnInstructions := c.leaveScope()
 
 		fn := &compilerObject.CompiledFunction{
-			Instructions: fnInstructions,
-			NumLocals:    numLocals,
+			Instructions:  fnInstructions,
+			NumLocals:     numLocals,
+			NumParameters: len(node.Parameters),
 		}
 
 		c.emit(code.OpConstant, c.addConstant(fn))
