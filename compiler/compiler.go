@@ -275,7 +275,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 		fnInstructions := c.leaveScope()
 
-		fn := &compilerObject.CompiledFunctionObject{Instructions: fnInstructions}
+		fn := &compilerObject.CompiledFunction{Instructions: fnInstructions}
 
 		c.emit(code.OpConstant, c.addConstant(fn))
 

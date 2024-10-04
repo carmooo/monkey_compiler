@@ -10,13 +10,13 @@ const (
 	COMPILED_FUNCTION_OBJECT = "COMPILED_FUNCTION_OBJECT"
 )
 
-type CompiledFunctionObject struct {
+type CompiledFunction struct {
 	Instructions code.Instructions
 }
 
-func (cf *CompiledFunctionObject) Type() object.ObjectType {
+func (cf *CompiledFunction) Type() object.ObjectType {
 	return COMPILED_FUNCTION_OBJECT
 }
-func (cf *CompiledFunctionObject) Inspect() string {
+func (cf *CompiledFunction) Inspect() string {
 	return fmt.Sprintf("CompiledFunction[%p]", cf)
 }

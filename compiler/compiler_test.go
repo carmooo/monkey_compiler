@@ -719,7 +719,7 @@ func testConstants(expected []interface{}, actual []object.Object) error {
 			}
 
 		case []code.Instructions:
-			fn, ok := actual[i].(*compilerObject.CompiledFunctionObject)
+			fn, ok := actual[i].(*compilerObject.CompiledFunction)
 			if !ok {
 				return fmt.Errorf("constant at %d - not a function: %T",
 					i, actual[i])
