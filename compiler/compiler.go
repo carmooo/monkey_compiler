@@ -282,9 +282,13 @@ func (c *Compiler) Compile(node ast.Node) error {
 			c.emit(code.OpReturn)
 		}
 
+		numLocals := c.symbolTable.numDefinitions
 		fnInstructions := c.leaveScope()
 
-		fn := &compilerObject.CompiledFunction{Instructions: fnInstructions}
+		fn := &compilerObject.CompiledFunction{
+			Instructions: fnInstructions,
+			NumLocals:    numLocals,
+		}
 
 		c.emit(code.OpConstant, c.addConstant(fn))
 
