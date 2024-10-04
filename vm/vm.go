@@ -203,6 +203,7 @@ func (vm *VM) Run() error {
 			}
 
 		case code.OpCall:
+			vm.currentFrame().ip++ // REMOVE ME
 			fn, ok := vm.stack[vm.sp-1].(*compilerObject.CompiledFunction)
 			if !ok {
 				return fmt.Errorf("calling non-function")
