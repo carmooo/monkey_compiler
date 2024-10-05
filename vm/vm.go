@@ -206,20 +206,10 @@ func (vm *VM) Run() error {
 			numArgs := code.ReadUint8(instructions[ip+1:])
 			vm.currentFrame().ip++
 
-			fn, ok := vm.stack[vm.sp-1-int(numArgs)].(*compilerObject.CompiledFunction)
-			if !ok {
-				return fmt.Errorf("calling non-function")
+			err := vm.executeCall(int(numArgs))
+			if err != nil {
+				return err
 			}
-
-			if int(numArgs) != fn.NumParameters {
-				return fmt.Errorf("wrong number of arguments: want=%d, got=%d",
-					fn.NumParameters, numArgs)
-			}
-
-			frame := NewFrame(fn, vm.sp-int(numArgs))
-			vm.pushFrame(frame)
-			// vm.sp += fn.numLocals
-			vm.sp = frame.basePointer + fn.NumLocals
 
 		case code.OpReturnValue:
 			returnValue := vm.pop()
@@ -256,6 +246,17 @@ func (vm *VM) Run() error {
 
 			frame := vm.currentFrame()
 			err := vm.push(vm.stack[frame.basePointer+int(localIndex)])
+			if err != nil {
+				return err
+			}
+
+		case code.OpGetBuiltin:
+			builtinIndex := code.ReadUint8(instructions[ip+1:])
+			vm.currentFrame().ip++
+
+			definition := object.Builtins[builtinIndex]
+
+			err := vm.push(definition.Builtin)
 			if err != nil {
 				return err
 			}
@@ -488,6 +489,40 @@ func (vm *VM) executeHashIndex(hash, index object.Object) error {
 		return vm.push(Null)
 	}
 	return vm.push(pair.Value)
+}
+
+func (vm *VM) executeCall(numArgs int) error {
+	calee := vm.stack[vm.sp-1-numArgs]
+	switch calee := calee.(type) {
+
+	case *compilerObject.CompiledFunction:
+		if numArgs != calee.NumParameters {
+			return fmt.Errorf("wrong number of arguments: want=%d, got=%d",
+				calee.NumParameters, numArgs)
+		}
+
+		frame := NewFrame(calee, vm.sp-numArgs)
+		vm.pushFrame(frame)
+		// vm.sp += fn.numLocals
+		vm.sp = frame.basePointer + calee.NumLocals
+
+		return nil
+
+	case *object.Builtin:
+		args := vm.stack[vm.sp-numArgs : vm.sp]
+
+		result := calee.Fn(args...)
+		vm.sp -= numArgs + 1
+
+		if result != nil {
+			return vm.push(result)
+		} else {
+			return vm.push(Null)
+		}
+
+	default:
+		return fmt.Errorf("calling non-function")
+	}
 }
 
 func nativeBoolToBoolean(b bool) object.Object {

@@ -392,6 +392,73 @@ func TestCallingFunctionsWithWrongArguments(t *testing.T) {
 	}
 }
 
+func TestBuiltinFunctions(t *testing.T) {
+	tests := []vmTestCase{
+		{`len("")`, 0},
+		{`len("four")`, 4},
+		{`len("hello world")`, 11},
+		{
+			`len(1)`,
+			&object.Error{Message: "argument to `len` not supported, got INTEGER"},
+		},
+		{
+			`len("1", "2")`,
+			&object.Error{Message: "wrong number of arguments. got=2, want=1"},
+		},
+		{`len([1,2,3])`, 3},
+		{`len([])`, 0},
+		{`puts("hello world")`, Null},
+		{`first([1,2,3])`, 1},
+		{`first([])`, Null},
+		{
+			`first(1)`,
+			&object.Error{Message: "argument to `first` must be ARRAY, got INTEGER"},
+		},
+		{
+			`first([1,2,3], [4,5,6])`,
+			&object.Error{Message: "wrong number of arguments. got=2, want=1"},
+		},
+		{`last([1,2,3])`, 3},
+		{`last([])`, Null},
+		{
+			`last(1)`,
+			&object.Error{Message: "argument to `last` must be ARRAY, got INTEGER"},
+		},
+		{
+			`last([1,2,3], [4,5,6])`,
+			&object.Error{Message: "wrong number of arguments. got=2, want=1"},
+		},
+		{`rest([1,2,3])`, []int{2, 3}},
+		{`rest([])`, Null},
+		{
+			`rest(1)`,
+			&object.Error{Message: "argument to `rest` must be ARRAY, got INTEGER"},
+		},
+		{
+			`rest([1,2,3], [4,5,6])`,
+			&object.Error{Message: "wrong number of arguments. got=2, want=1"},
+		},
+		{`push([], 1)`, []int{1}},
+		{
+			`push(1, 1)`,
+			&object.Error{Message: "argument to `push` must be ARRAY, got INTEGER"},
+		},
+		{
+			`push([], 1, 1)`,
+			&object.Error{Message: "wrong number of arguments. got=3, want=2"},
+		},
+		{
+			`
+				let array = [1, 2, 3];
+				first(rest(push(array, 4)))
+			`,
+			2,
+		},
+	}
+
+	runVmTests(t, tests)
+}
+
 type vmTestCase struct {
 	input    string
 	expected interface{}
@@ -410,7 +477,6 @@ func runVmTests(t *testing.T, tests []vmTestCase) {
 		}
 
 		vm := New(comp.ByteCode())
-		fmt.Println(comp.ByteCode())
 		err = vm.Run()
 		if err != nil {
 			t.Fatalf("vm error: %s", err)
@@ -473,12 +539,23 @@ func testExpectedObject(t *testing.T, expected interface{}, actual object.Object
 		for expectedKey, expectedValue := range expected {
 			pair, ok := hash.Pairs[expectedKey]
 			if !ok {
-				t.Errorf("no pari for given key in pairs")
+				t.Errorf("no pair for given key in pairs")
 			}
 			err := testIntegerObject(expectedValue, pair.Value)
 			if err != nil {
 				t.Errorf("testIntegerObject failed: %s", err)
 			}
+		}
+
+	case *object.Error:
+		errObj, ok := actual.(*object.Error)
+		if !ok {
+			t.Errorf("object is not array. got=%T (%+v)",
+				actual, actual)
+		}
+		if errObj.Message != expected.Message {
+			t.Errorf("wrong error message. expected=%q, got=%q",
+				expected.Message, errObj.Message)
 		}
 
 	default:
