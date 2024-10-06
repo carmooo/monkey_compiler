@@ -264,7 +264,7 @@ func (vm *VM) Run() error {
 
 		case code.OpClosure:
 			constIndex := int(code.ReadUint16(instructions[ip+1:]))
-			_ = code.ReadUint8(instructions[ip+1:])
+			numFree := int(code.ReadUint8(instructions[ip+3:]))
 			vm.currentFrame().ip += 3
 
 			constant := vm.constants[constIndex]
@@ -273,8 +273,24 @@ func (vm *VM) Run() error {
 				return fmt.Errorf("not a function: %+v", constant)
 			}
 
-			closure := &compilerObject.Closure{Fn: function}
+			free := make([]object.Object, numFree)
+			for i := 0; i < numFree; i++ {
+				free[i] = vm.stack[vm.sp-numFree+i]
+			}
+			vm.sp -= numFree
+
+			closure := &compilerObject.Closure{Fn: function, FreeVariables: free}
 			err := vm.push(closure)
+			if err != nil {
+				return err
+			}
+
+		case code.OpGetFree:
+			freeIndex := int(code.ReadUint8(instructions[ip+1:]))
+			vm.currentFrame().ip++
+
+			currentClosure := vm.currentFrame().cl
+			err := vm.push(currentClosure.FreeVariables[freeIndex])
 			if err != nil {
 				return err
 			}

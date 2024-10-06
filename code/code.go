@@ -95,6 +95,7 @@ const (
 	OpGetBuiltin
 
 	OpClosure
+	OpGetFree
 )
 
 type Definition struct {
@@ -133,6 +134,7 @@ var definitions = map[Opcode]*Definition{
 	// first operand: constant index of the compiled fn
 	// second operand: num of free variables
 	OpClosure: {"OpClosure", []int{2, 1}},
+	OpGetFree: {"OpGetFree", []int{1}},
 }
 
 func Lookup(op byte) (*Definition, error) {
