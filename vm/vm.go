@@ -18,18 +18,18 @@ var False = &object.Boolean{Value: false}
 var Null = &object.Null{}
 
 type Frame struct {
-	fn *compilerObject.CompiledFunction
+	cl *compilerObject.Closure
 	ip int
 
 	basePointer int
 }
 
-func NewFrame(fn *compilerObject.CompiledFunction, basePointer int) *Frame {
-	return &Frame{fn: fn, ip: -1, basePointer: basePointer}
+func NewFrame(cl *compilerObject.Closure, basePointer int) *Frame {
+	return &Frame{cl: cl, ip: -1, basePointer: basePointer}
 }
 
 func (f *Frame) Instructions() code.Instructions {
-	return f.fn.Instructions
+	return f.cl.Fn.Instructions
 }
 
 type VM struct {
@@ -46,7 +46,8 @@ type VM struct {
 
 func New(bytecode *compiler.ByteCode) *VM {
 	mainFn := &compilerObject.CompiledFunction{Instructions: bytecode.Instructions}
-	mainFrame := NewFrame(mainFn, 0)
+	mainClosure := &compilerObject.Closure{Fn: mainFn}
+	mainFrame := NewFrame(mainClosure, 0)
 
 	frames := make([]*Frame, MaxFrames)
 	frames[0] = mainFrame
@@ -257,6 +258,23 @@ func (vm *VM) Run() error {
 			definition := object.Builtins[builtinIndex]
 
 			err := vm.push(definition.Builtin)
+			if err != nil {
+				return err
+			}
+
+		case code.OpClosure:
+			constIndex := int(code.ReadUint16(instructions[ip+1:]))
+			_ = code.ReadUint8(instructions[ip+1:])
+			vm.currentFrame().ip += 3
+
+			constant := vm.constants[constIndex]
+			function, ok := constant.(*compilerObject.CompiledFunction)
+			if !ok {
+				return fmt.Errorf("not a function: %+v", constant)
+			}
+
+			closure := &compilerObject.Closure{Fn: function}
+			err := vm.push(closure)
 			if err != nil {
 				return err
 			}
@@ -495,16 +513,16 @@ func (vm *VM) executeCall(numArgs int) error {
 	calee := vm.stack[vm.sp-1-numArgs]
 	switch calee := calee.(type) {
 
-	case *compilerObject.CompiledFunction:
-		if numArgs != calee.NumParameters {
+	case *compilerObject.Closure:
+		if numArgs != calee.Fn.NumParameters {
 			return fmt.Errorf("wrong number of arguments: want=%d, got=%d",
-				calee.NumParameters, numArgs)
+				calee.Fn.NumParameters, numArgs)
 		}
 
 		frame := NewFrame(calee, vm.sp-numArgs)
 		vm.pushFrame(frame)
 		// vm.sp += fn.numLocals
-		vm.sp = frame.basePointer + calee.NumLocals
+		vm.sp = frame.basePointer + calee.Fn.NumLocals
 
 		return nil
 

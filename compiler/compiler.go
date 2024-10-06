@@ -303,7 +303,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 			NumParameters: len(node.Parameters),
 		}
 
-		c.emit(code.OpConstant, c.addConstant(fn))
+		c.emit(code.OpClosure, c.addConstant(fn), 0)
 
 	case *ast.ReturnStatement:
 		err := c.Compile(node.Value)
